@@ -29,10 +29,15 @@ class _TeacherPortalState extends State<TeacherPortal> {
   String ssid = "Unknown";
   bool checking = false;
 
+  // 🔥 ACTIVE CLASS STATE
+  bool hasActiveClass = false;
+  String? activeSessionId;
+
   @override
   void initState() {
     super.initState();
     _checkPermissions();
+    _checkActiveClass();
   }
 
   Future<void> _checkPermissions() async {
@@ -41,13 +46,28 @@ class _TeacherPortalState extends State<TeacherPortal> {
     await _checkConnectivityStatus();
   }
 
-  /// REAL HOTSPOT DETECTION (Platform Channel → Android)
   Future<bool> _isHotspotEnabled() async {
     try {
       final result = await platform.invokeMethod("isHotspotEnabled");
       return result == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<void> _checkActiveClass() async {
+    final active = await _firebaseService.getActiveSession();
+
+    if (active != null) {
+      setState(() {
+        hasActiveClass = true;
+        activeSessionId = active.id;
+      });
+    } else {
+      setState(() {
+        hasActiveClass = false;
+        activeSessionId = null;
+      });
     }
   }
 
@@ -60,21 +80,17 @@ class _TeacherPortalState extends State<TeacherPortal> {
 
     final connectivityResult = await Connectivity().checkConnectivity();
     String? wifiName;
-    String? ipAddress;
 
     try {
       wifiName = await _networkInfo.getWifiName();
-      ipAddress = await _networkInfo.getWifiIP();
     } catch (_) {
       wifiName = null;
-      ipAddress = null;
     }
 
     bool hotspotEnabled = await _isHotspotEnabled();
 
     setState(() {
       ssid = (wifiName == null || wifiName.isEmpty) ? "HOTSPOT" : wifiName;
-
 
       if (hotspotEnabled) {
         wifiStatus = "Hotspot Active";
@@ -99,6 +115,15 @@ class _TeacherPortalState extends State<TeacherPortal> {
   Future<void> _startClass() async {
     if (!hotspotReady) return;
 
+    await _checkActiveClass();
+
+    if (hasActiveClass) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("A class is already running! End it first.")),
+      );
+      return;
+    }
+
     final now = DateTime.now();
     final formattedDate = DateFormat('dd-MM-yyyy').format(now);
     final formattedTime = DateFormat('hh:mm a').format(now);
@@ -107,56 +132,114 @@ class _TeacherPortalState extends State<TeacherPortal> {
       teacherName: "Prof. Sharma",
       subject: "Network Fundamentals",
       date: formattedDate,
-      time: formattedTime,
+      startTime: formattedTime,
       ssid: ssid,
+      endTime: null,
     );
 
     try {
       await _firebaseService.createClassSession(session);
 
-      if (!mounted) return;
+      setState(() {
+        hasActiveClass = true;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Class session started & saved.')),
+        const SnackBar(content: Text('Class session started!')),
       );
+
+      _checkActiveClass();
     } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to start session: $e')),
       );
     }
   }
 
-  Widget _statusCard() {
+  Future<void> _endClass() async {
+    if (activeSessionId == null) return;
+
+    final now = DateTime.now();
+    final endTime = DateFormat('hh:mm a').format(now);
+
+    await _firebaseService.endClass(activeSessionId!, endTime);
+
+    setState(() {
+      hasActiveClass = false;
+      activeSessionId = null;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Class ended successfully!")),
+    );
+  }
+
+  // ---------------- UI COMPONENTS ----------------
+
+  Widget _enhancedStatusCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.indigo.shade100),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Connection Status', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
+          const Text(
+            "Connection Status",
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF3D3D3D),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
           Row(
             children: [
               Icon(
                 hotspotReady ? Icons.check_circle : Icons.info_outline,
                 color: hotspotReady ? Colors.green : Colors.orange,
+                size: 28,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   wifiStatus,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text('SSID: $ssid', style: const TextStyle(fontSize: 13)),
+
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              const Icon(Icons.wifi, size: 20, color: Colors.indigo),
+              const SizedBox(width: 8),
+              Text(
+                "SSID: $ssid",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -170,62 +253,132 @@ class _TeacherPortalState extends State<TeacherPortal> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: large ? 54 : 44,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: large ? 22 : 18),
-        label: Text(label, style: TextStyle(fontSize: large ? 16 : 14)),
+      height: large ? 55 : 48,
+      child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: onPressed != null ? Colors.indigoAccent : Colors.grey,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          elevation: onPressed != null ? 4 : 0,
+          backgroundColor: onPressed != null ? Colors.white : Colors.white54,
+          foregroundColor: Colors.indigoAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: large ? 24 : 20),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: large ? 17 : 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  // ---------------- BUILD UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.indigo.shade50,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('LearnTrack - Teacher Portal'),
-        backgroundColor: Colors.indigoAccent,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          "LearnTrack - Teacher Portal",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              const Text(
-                'Hotspot & Class Control',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              checking ? const LinearProgressIndicator() : const SizedBox(height: 6),
-              const SizedBox(height: 12),
-              _statusCard(),
-              const SizedBox(height: 18),
-              _primaryButton(
-                label: 'Refresh Connection Status',
-                icon: Icons.refresh,
-                onPressed: _checkConnectivityStatus,
-              ),
-              const SizedBox(height: 12),
-              _primaryButton(
-                label: 'Open Hotspot Settings',
-                icon: Icons.settings,
-                onPressed: _openHotspotSettings,
-              ),
-              const Spacer(),
-              _primaryButton(
-                label: 'Start Class',
-                icon: Icons.wifi_tethering,
-                onPressed: hotspotReady ? _startClass : null,
-                large: true,
-              ),
-              const SizedBox(height: 12),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF536DFE),
+              Color(0xFF8C9EFF),
             ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
+                const Text(
+                  "Hotspot & Class Control",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  "Manage your hotspot and class sessions",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                checking
+                    ? const LinearProgressIndicator(
+                        backgroundColor: Colors.white24,
+                        color: Colors.white,
+                      )
+                    : const SizedBox(),
+
+                const SizedBox(height: 16),
+                _enhancedStatusCard(),
+
+                const SizedBox(height: 22),
+
+                _primaryButton(
+                  label: "Refresh Connection Status",
+                  icon: Icons.refresh,
+                  onPressed: _checkConnectivityStatus,
+                ),
+
+                const SizedBox(height: 14),
+
+                _primaryButton(
+                  label: "Open Hotspot Settings",
+                  icon: Icons.settings,
+                  onPressed: _openHotspotSettings,
+                ),
+
+                const Spacer(),
+
+                if (!hasActiveClass)
+                  _primaryButton(
+                    label: "Start Class",
+                    icon: Icons.play_circle_fill,
+                    onPressed: hotspotReady ? _startClass : null,
+                    large: true,
+                  ),
+
+                if (hasActiveClass)
+                  _primaryButton(
+                    label: "End Class",
+                    icon: Icons.stop_circle,
+                    onPressed: _endClass,
+                    large: true,
+                  ),
+
+                const SizedBox(height: 14),
+              ],
+            ),
           ),
         ),
       ),

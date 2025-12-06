@@ -1,23 +1,29 @@
-// lib/services/firebase_service.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/class_session.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  /// Check if there is an active session (endTime == null)
+  Future<DocumentSnapshot?> getActiveSession() async {
+    final query = await _firestore
+        .collection('class_sessions')
+        .where('endTime', isNull: true)
+        .limit(1)
+        .get();
+
+    return query.docs.isNotEmpty ? query.docs.first : null;
+  }
+
+  /// Create a new class session
   Future<void> createClassSession(ClassSession session) async {
-    try {
-      print("➡️ Writing to Firestore...");
-      print("Session Data: ${session.toMap()}");
+    await _firestore.collection('class_sessions').add(session.toMap());
+  }
 
-      await _firestore.collection('class_sessions').add(session.toMap());
-
-      print("✅ Firestore write success");
-    } catch (e, stack) {
-      print("❌ Firestore write FAILED: $e");
-      print("STACK TRACE: $stack");
-      throw Exception("Failed Firestore write: $e");
-    }
+  /// End session: update endTime
+  Future<void> endClass(String docId, String endTime) async {
+    await _firestore.collection('class_sessions').doc(docId).update({
+      'endTime': endTime,
+    });
   }
 }

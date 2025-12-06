@@ -8,11 +8,10 @@ class LoginPage extends StatelessWidget {
   LoginPage({super.key});
 
   void login(BuildContext context) {
-    // Simple mock login
     if (usernameController.text.isNotEmpty && passwordController.text.isNotEmpty) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => TeacherPortal()),
+        MaterialPageRoute(builder: (_) => const TeacherPortal()),
       );
     }
   }
@@ -20,98 +19,139 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Colors.indigo.shade50,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Container(
+              width: 380,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: Colors.black12.withOpacity(0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              width: 380,
+
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.school, size: 70, color: Color(0xFF1565C0)),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Teacher Login',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                  // App Icon
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.indigo.shade100,
+                    ),
+                    child: const Icon(
+                      Icons.school_rounded,
+                      size: 60,
+                      color: Colors.indigo,
+                    ),
                   ),
-                  const SizedBox(height: 30),
 
-                  // Username field
+                  const SizedBox(height: 20),
+
+                  // Title
+                  const Text(
+                    "Teacher Login",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    "Sign in to manage your classes",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Username
                   TextField(
                     controller: usernameController,
+                    style: const TextStyle(color: Colors.black),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.person_outline),
-                      labelText: 'Username',
+                      prefixIcon: const Icon(Icons.person_outline, color: Colors.indigo),
+                      labelText: "Username",
+                      labelStyle: const TextStyle(color: Colors.black87),
                       filled: true,
-                      fillColor: const Color(0xFFF0F3F8),
+                      fillColor: Colors.indigo.shade50.withOpacity(0.4),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // Password field
+                  // Password
                   TextField(
                     controller: passwordController,
                     obscureText: true,
+                    style: const TextStyle(color: Colors.black),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.indigo),
+                      labelText: "Password",
+                      labelStyle: const TextStyle(color: Colors.black87),
                       filled: true,
-                      fillColor: const Color(0xFFF0F3F8),
+                      fillColor: Colors.indigo.shade50.withOpacity(0.4),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
 
-                  // Login button
+                  // Login Button
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 52,
                     child: ElevatedButton(
                       onPressed: () => login(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1565C0),
+                        backgroundColor: Colors.indigoAccent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         elevation: 4,
                       ),
                       child: const Text(
-                        'Login',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        "Login",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
+
                   Text(
-                    'Welcome back, please sign in to continue.',
+                    "Welcome back! Please enter your credentials.",
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
