@@ -4,6 +4,10 @@ LearnTrack is a modern attendance-tracking system built using Flutter, Firebase,
 It is designed for colleges, schools, and training institutes where teachers can quickly start/end classes, and attendance is captured only when students connect to the teacher’s hotspot.
 
 Core Idea:
+
+https://github.com/user-attachments/assets/379ebef9-2523-4edc-b1b7-4c712a389ef8
+
+
 Instead of GPS or manual attendance, LearnTrack verifies students via hotspot connectivity, reducing proxy attendance and ensuring real-time authentication.
 
 Features:
